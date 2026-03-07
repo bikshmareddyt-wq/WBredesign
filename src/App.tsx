@@ -7,6 +7,9 @@ import {
   Ban,
   Users,
   Inbox,
+  Plus,
+  Trash2,
+  Shield,
 } from 'lucide-react'
 
 type SidebarSection =
@@ -113,11 +116,101 @@ function generateClaims(): Claim[] {
 
 const allClaims = generateClaims()
 
+const roles = ['Processor', 'Reviewer', 'Manager', 'Admin', 'Read Only']
+
+interface TestUser {
+  id: string
+  name: string
+  email: string
+  department: string
+}
+
+interface RoleAssignment {
+  id: string
+  userId: string
+  role: string
+  claimType: string
+  workbasket: string
+  subtype: string
+}
+
+const testUsers: TestUser[] = [
+  { id: 'U001', name: 'Alice Johnson', email: 'alice.johnson@company.com', department: 'Claims Processing' },
+  { id: 'U002', name: 'Bob Martinez', email: 'bob.martinez@company.com', department: 'Claims Processing' },
+  { id: 'U003', name: 'Carol Williams', email: 'carol.williams@company.com', department: 'Recovery' },
+  { id: 'U004', name: 'David Chen', email: 'david.chen@company.com', department: 'Management' },
+  { id: 'U005', name: 'Eva Thompson', email: 'eva.thompson@company.com', department: 'Claims Processing' },
+  { id: 'U006', name: 'Frank Garcia', email: 'frank.garcia@company.com', department: 'Recovery' },
+  { id: 'U007', name: 'Grace Kim', email: 'grace.kim@company.com', department: 'Management' },
+  { id: 'U008', name: 'Henry Patel', email: 'henry.patel@company.com', department: 'Claims Processing' },
+  { id: 'U009', name: 'Irene Davis', email: 'irene.davis@company.com', department: 'IT Support' },
+  { id: 'U010', name: 'Jack Robinson', email: 'jack.robinson@company.com', department: 'Claims Processing' },
+  { id: 'U011', name: 'Kate Wilson', email: 'kate.wilson@company.com', department: 'Management' },
+  { id: 'U012', name: 'Leo Nguyen', email: 'leo.nguyen@company.com', department: 'Recovery' },
+]
+
+const initialAssignments: RoleAssignment[] = [
+  { id: 'RA001', userId: 'U001', role: 'Processor', claimType: 'Debt/ATM', workbasket: 'Ready To Work', subtype: 'Initial Review' },
+  { id: 'RA002', userId: 'U001', role: 'Processor', claimType: 'ACH', workbasket: 'Ready To Work', subtype: 'Enhanced Review' },
+  { id: 'RA003', userId: 'U002', role: 'Reviewer', claimType: 'Check', workbasket: 'Ready To Work', subtype: 'Initial Review' },
+  { id: 'RA004', userId: 'U002', role: 'Processor', claimType: 'Credit Card', workbasket: 'Pending', subtype: '' },
+  { id: 'RA005', userId: 'U003', role: 'Processor', claimType: 'Debt/ATM', workbasket: 'Recovery', subtype: 'Chargeback' },
+  { id: 'RA006', userId: 'U003', role: 'Processor', claimType: 'ACH', workbasket: 'Recovery', subtype: 'Exception' },
+  { id: 'RA007', userId: 'U004', role: 'Manager', claimType: 'All', workbasket: 'Manager Approvals', subtype: '' },
+  { id: 'RA008', userId: 'U005', role: 'Processor', claimType: 'OLB', workbasket: 'Ready To Work', subtype: 'Initial Review' },
+  { id: 'RA009', userId: 'U005', role: 'Processor', claimType: 'IDT', workbasket: 'Ready To Work', subtype: 'Exception' },
+  { id: 'RA010', userId: 'U006', role: 'Reviewer', claimType: 'Rejected Transactions', workbasket: 'Recovery', subtype: 'Chargeback' },
+  { id: 'RA011', userId: 'U007', role: 'Manager', claimType: 'Credit Card', workbasket: 'Manager Approvals', subtype: '' },
+  { id: 'RA012', userId: 'U007', role: 'Admin', claimType: 'All', workbasket: 'Ready To Work', subtype: '' },
+  { id: 'RA013', userId: 'U008', role: 'Processor', claimType: 'Check', workbasket: 'Pending', subtype: '' },
+  { id: 'RA014', userId: 'U008', role: 'Processor', claimType: 'Debt/ATM', workbasket: 'Ready To Work', subtype: 'Enhanced Review' },
+  { id: 'RA015', userId: 'U009', role: 'Read Only', claimType: 'All', workbasket: 'Ready To Work', subtype: '' },
+  { id: 'RA016', userId: 'U010', role: 'Processor', claimType: 'ACH', workbasket: 'Ready To Work', subtype: 'Initial Review' },
+  { id: 'RA017', userId: 'U010', role: 'Reviewer', claimType: 'ACH', workbasket: 'Recovery', subtype: 'Chargeback' },
+  { id: 'RA018', userId: 'U011', role: 'Manager', claimType: 'Debt/ATM', workbasket: 'Manager Approvals', subtype: '' },
+  { id: 'RA019', userId: 'U011', role: 'Manager', claimType: 'Check', workbasket: 'Manager Approvals', subtype: '' },
+  { id: 'RA020', userId: 'U012', role: 'Processor', claimType: 'Credit Card', workbasket: 'Recovery', subtype: 'Exception' },
+  { id: 'RA021', userId: 'U012', role: 'Processor', claimType: 'IDT', workbasket: 'Recovery', subtype: 'Chargeback' },
+]
+
 function App() {
   const [activeSection, setActiveSection] = useState<SidebarSection>('workbasket')
   const [selectedClaimType, setSelectedClaimType] = useState('All')
   const [selectedWorkbasket, setSelectedWorkbasket] = useState('Ready To Work')
   const [selectedSubtype, setSelectedSubtype] = useState('Initial Review')
+
+  // Permissions state
+  const [assignments, setAssignments] = useState<RoleAssignment[]>(initialAssignments)
+  const [permFilterUser, setPermFilterUser] = useState('')
+  const [permFilterClaimType, setPermFilterClaimType] = useState('All')
+  const [showAddForm, setShowAddForm] = useState(false)
+  const [newAssignment, setNewAssignment] = useState({
+    userId: testUsers[0].id,
+    role: roles[0],
+    claimType: claimTypes[1],
+    workbasket: workbaskets[0],
+    subtype: '',
+  })
+
+  const filteredAssignments = useMemo(() => {
+    return assignments.filter((a) => {
+      if (permFilterUser && a.userId !== permFilterUser) return false
+      if (permFilterClaimType !== 'All' && a.claimType !== 'All' && a.claimType !== permFilterClaimType) return false
+      return true
+    })
+  }, [assignments, permFilterUser, permFilterClaimType])
+
+  const handleAddAssignment = () => {
+    const subtypes = workbasketSubtypes[newAssignment.workbasket]
+    const sub = subtypes.length > 0 ? (newAssignment.subtype || subtypes[0]) : ''
+    const newId = `RA${String(assignments.length + 1).padStart(3, '0')}`
+    setAssignments([...assignments, { ...newAssignment, subtype: sub, id: newId }])
+    setShowAddForm(false)
+  }
+
+  const handleDeleteAssignment = (id: string) => {
+    setAssignments(assignments.filter((a) => a.id !== id))
+  }
 
   const claimCountByType = useMemo(() => {
     const counts: Record<string, number> = {}
@@ -209,11 +302,242 @@ function App() {
         )
       case 'permissions':
         return (
-          <div className="space-y-4">
-            <h2 className="text-2xl font-semibold text-gray-800">Set Colleague Permissions</h2>
-            <p className="text-gray-500">Manage access and permissions for colleagues.</p>
-            <div className="rounded-lg border border-gray-200 bg-white p-6 text-center text-gray-400">
-              No colleagues configured
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-2xl font-semibold text-gray-800">Set Colleague Permissions</h2>
+                <p className="text-gray-500">Assign roles to users at claim type, workbasket, and subtype level.</p>
+              </div>
+              <button
+                onClick={() => setShowAddForm(!showAddForm)}
+                className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
+              >
+                <Plus size={16} />
+                Assign Role
+              </button>
+            </div>
+
+            {/* Add Assignment Form */}
+            {showAddForm && (
+              <div className="rounded-lg border border-blue-200 bg-blue-50 p-5 space-y-4">
+                <h3 className="text-sm font-semibold text-blue-800 flex items-center gap-2">
+                  <Shield size={16} /> New Role Assignment
+                </h3>
+                <div className="grid grid-cols-5 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">User</label>
+                    <select
+                      value={newAssignment.userId}
+                      onChange={(e) => setNewAssignment({ ...newAssignment, userId: e.target.value })}
+                      className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+                    >
+                      {testUsers.map((u) => (
+                        <option key={u.id} value={u.id}>{u.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Role</label>
+                    <select
+                      value={newAssignment.role}
+                      onChange={(e) => setNewAssignment({ ...newAssignment, role: e.target.value })}
+                      className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+                    >
+                      {roles.map((r) => (
+                        <option key={r} value={r}>{r}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Claim Type</label>
+                    <select
+                      value={newAssignment.claimType}
+                      onChange={(e) => setNewAssignment({ ...newAssignment, claimType: e.target.value })}
+                      className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+                    >
+                      {claimTypes.map((t) => (
+                        <option key={t} value={t}>{t}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Workbasket</label>
+                    <select
+                      value={newAssignment.workbasket}
+                      onChange={(e) => {
+                        const wb = e.target.value
+                        const subs = workbasketSubtypes[wb]
+                        setNewAssignment({ ...newAssignment, workbasket: wb, subtype: subs.length > 0 ? subs[0] : '' })
+                      }}
+                      className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+                    >
+                      {workbaskets.map((w) => (
+                        <option key={w} value={w}>{w}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Subtype</label>
+                    {workbasketSubtypes[newAssignment.workbasket].length > 0 ? (
+                      <select
+                        value={newAssignment.subtype}
+                        onChange={(e) => setNewAssignment({ ...newAssignment, subtype: e.target.value })}
+                        className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+                      >
+                        {workbasketSubtypes[newAssignment.workbasket].map((s) => (
+                          <option key={s} value={s}>{s}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <div className="rounded-md border border-gray-200 bg-gray-100 px-3 py-2 text-sm text-gray-400">N/A</div>
+                    )}
+                  </div>
+                </div>
+                <div className="flex gap-2 pt-1">
+                  <button
+                    onClick={handleAddAssignment}
+                    className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
+                  >
+                    Save Assignment
+                  </button>
+                  <button
+                    onClick={() => setShowAddForm(false)}
+                    className="rounded-md bg-white border border-gray-300 px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Filters */}
+            <div className="flex gap-4">
+              <div className="flex items-center gap-2">
+                <label className="text-sm font-medium text-gray-600">Filter by User:</label>
+                <select
+                  value={permFilterUser}
+                  onChange={(e) => setPermFilterUser(e.target.value)}
+                  className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+                >
+                  <option value="">All Users</option>
+                  {testUsers.map((u) => (
+                    <option key={u.id} value={u.id}>{u.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex items-center gap-2">
+                <label className="text-sm font-medium text-gray-600">Filter by Claim Type:</label>
+                <select
+                  value={permFilterClaimType}
+                  onChange={(e) => setPermFilterClaimType(e.target.value)}
+                  className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+                >
+                  {claimTypes.map((t) => (
+                    <option key={t} value={t}>{t}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <p className="text-xs text-gray-400">
+              Showing {filteredAssignments.length} assignment{filteredAssignments.length !== 1 ? 's' : ''}
+            </p>
+
+            {/* Assignments Table */}
+            <div className="overflow-hidden rounded-lg border border-gray-200">
+              <table className="w-full text-left text-sm">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-4 py-3 font-medium text-gray-600">User</th>
+                    <th className="px-4 py-3 font-medium text-gray-600">Department</th>
+                    <th className="px-4 py-3 font-medium text-gray-600">Role</th>
+                    <th className="px-4 py-3 font-medium text-gray-600">Claim Type</th>
+                    <th className="px-4 py-3 font-medium text-gray-600">Workbasket</th>
+                    <th className="px-4 py-3 font-medium text-gray-600">Subtype</th>
+                    <th className="px-4 py-3 font-medium text-gray-600">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {filteredAssignments.map((a) => {
+                    const user = testUsers.find((u) => u.id === a.userId)
+                    const roleColor =
+                      a.role === 'Admin' ? 'bg-red-100 text-red-800' :
+                      a.role === 'Manager' ? 'bg-purple-100 text-purple-800' :
+                      a.role === 'Reviewer' ? 'bg-blue-100 text-blue-800' :
+                      a.role === 'Read Only' ? 'bg-gray-100 text-gray-800' :
+                      'bg-green-100 text-green-800'
+                    return (
+                      <tr key={a.id} className="hover:bg-gray-50 transition-colors">
+                        <td className="px-4 py-3">
+                          <div>
+                            <p className="font-medium text-gray-800">{user?.name}</p>
+                            <p className="text-xs text-gray-400">{user?.email}</p>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-gray-600">{user?.department}</td>
+                        <td className="px-4 py-3">
+                          <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${roleColor}`}>
+                            {a.role}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-gray-700">{a.claimType}</td>
+                        <td className="px-4 py-3 text-gray-700">{a.workbasket}</td>
+                        <td className="px-4 py-3 text-gray-500">{a.subtype || '—'}</td>
+                        <td className="px-4 py-3">
+                          <button
+                            onClick={() => handleDeleteAssignment(a.id)}
+                            className="rounded-md p-1.5 text-red-500 hover:bg-red-50 transition-colors"
+                            title="Remove assignment"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                  {filteredAssignments.length === 0 && (
+                    <tr>
+                      <td colSpan={7} className="px-4 py-8 text-center text-gray-400">
+                        No assignments found
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* User Summary Cards */}
+            <h3 className="text-lg font-semibold text-gray-800 pt-2">User Summary</h3>
+            <div className="grid grid-cols-3 gap-4">
+              {testUsers.map((user) => {
+                const userAssignments = assignments.filter((a) => a.userId === user.id)
+                if (userAssignments.length === 0) return null
+                return (
+                  <div key={user.id} className="rounded-lg border border-gray-200 bg-white p-4 space-y-2">
+                    <div className="flex items-center gap-3">
+                      <div className="h-9 w-9 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-bold">
+                        {user.name.split(' ').map((n) => n[0]).join('')}
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-800">{user.name}</p>
+                        <p className="text-xs text-gray-400">{user.department}</p>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                      {userAssignments.map((a) => (
+                        <span
+                          key={a.id}
+                          className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-600"
+                          title={`${a.role} - ${a.claimType} / ${a.workbasket}${a.subtype ? ' / ' + a.subtype : ''}`}
+                        >
+                          {a.claimType} &middot; {a.workbasket}{a.subtype ? ` &rsaquo; ${a.subtype}` : ''}
+                        </span>
+                      ))}
+                    </div>
+                    <p className="text-xs text-gray-400">{userAssignments.length} assignment{userAssignments.length !== 1 ? 's' : ''}</p>
+                  </div>
+                )
+              })}
             </div>
           </div>
         )
