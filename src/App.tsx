@@ -7,8 +7,6 @@ import {
   Ban,
   Users,
   Inbox,
-  ChevronRight,
-  ChevronDown,
 } from 'lucide-react'
 
 type SidebarSection =
@@ -32,7 +30,6 @@ const claimTypes = [
 
 function App() {
   const [activeSection, setActiveSection] = useState<SidebarSection>('workbasket')
-  const [workbasketOpen, setWorkbasketOpen] = useState(true)
   const [selectedClaimType, setSelectedClaimType] = useState('All')
 
   const sidebarItems: {
@@ -50,11 +47,6 @@ function App() {
 
   const handleSectionClick = (id: SidebarSection) => {
     setActiveSection(id)
-    if (id === 'workbasket') {
-      setWorkbasketOpen(!workbasketOpen)
-    } else {
-      setWorkbasketOpen(false)
-    }
   }
 
   const renderContent = () => {
@@ -119,7 +111,23 @@ function App() {
       case 'workbasket':
         return (
           <div className="space-y-4">
-            <h2 className="text-2xl font-semibold text-gray-800">Workbasket</h2>
+            <div className="flex items-center justify-between">
+              <h2 className="text-2xl font-semibold text-gray-800">Workbasket</h2>
+              <div className="flex items-center gap-3">
+                <label className="text-sm font-medium text-gray-600">Claim Type:</label>
+                <select
+                  value={selectedClaimType}
+                  onChange={(e) => setSelectedClaimType(e.target.value)}
+                  className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm text-gray-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                >
+                  {claimTypes.map((type) => (
+                    <option key={type} value={type}>
+                      {type}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
             <p className="text-gray-500">
               Viewing claims for: <span className="font-semibold text-blue-600">{selectedClaimType}</span>
             </p>
@@ -220,32 +228,7 @@ function App() {
                     {item.icon}
                   </span>
                   <span className="flex-1 text-left">{item.label}</span>
-                  {item.id === 'workbasket' && (
-                    <span className="text-gray-400">
-                      {workbasketOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-                    </span>
-                  )}
                 </button>
-
-                {/* Workbasket dropdown */}
-                {item.id === 'workbasket' && workbasketOpen && (
-                  <div className="mt-1 ml-4 border-l-2 border-blue-100 pl-3 pb-1">
-                    <label className="block text-xs font-medium text-gray-500 mb-1.5 px-2">
-                      Claim Type
-                    </label>
-                    <select
-                      value={selectedClaimType}
-                      onChange={(e) => setSelectedClaimType(e.target.value)}
-                      className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-200"
-                    >
-                      {claimTypes.map((type) => (
-                        <option key={type} value={type}>
-                          {type}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                )}
               </li>
             ))}
           </ul>
