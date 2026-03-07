@@ -288,9 +288,34 @@ function App() {
 
   // User Worklist state
   const [worklistIndex, setWorklistIndex] = useState(0)
+  const [worklistUserId, setWorklistUserId] = useState('')
 
   const prioritizedClaims = useMemo(() => {
-    const sorted = [...allClaims].sort((a, b) => {
+    let pool = allClaims
+    // Filter by user's assigned claim types if a user is selected
+    if (worklistUserId) {
+      const userAssigns = assignments.filter((a) => a.userId === worklistUserId)
+      const hasAllClaimType = userAssigns.some((a) => a.claimType === 'All')
+      if (!hasAllClaimType) {
+        const allowedTypes = new Set(userAssigns.map((a) => a.claimType))
+        pool = pool.filter((c) => allowedTypes.has(c.claimType))
+      }
+      // Also filter by allowed workbaskets
+      const allowedWbs = new Set(userAssigns.map((a) => a.workbasket))
+      pool = pool.filter((c) => allowedWbs.has(c.workbasket))
+      // Also filter by allowed subtypes within each workbasket
+      pool = pool.filter((c) => {
+        const subs = workbasketSubtypes[c.workbasket]
+        if (subs.length === 0) return true
+        const userSubs = userAssigns
+          .filter((a) => a.workbasket === c.workbasket && a.subtype)
+          .map((a) => a.subtype)
+        const hasWbAll = userAssigns.some((a) => a.workbasket === c.workbasket && a.claimType === 'All' && !a.subtype)
+        if (hasWbAll) return true
+        return userSubs.includes(c.subtype)
+      })
+    }
+    const sorted = [...pool].sort((a, b) => {
       const amountA = parseFloat(a.amount.replace('$', ''))
       const amountB = parseFloat(b.amount.replace('$', ''))
       const isHighA = amountA > 5000
@@ -305,7 +330,12 @@ function App() {
       return amountB - amountA
     })
     return sorted
-  }, [])
+  }, [worklistUserId, assignments])
+
+  const handleWorklistUserChange = (userId: string) => {
+    setWorklistUserId(userId)
+    setWorklistIndex(0)
+  }
 
   const claimCountByType = useMemo(() => {
     const counts: Record<string, number> = {}
@@ -388,13 +418,34 @@ function App() {
                 <h2 className="text-2xl font-semibold text-gray-800">User Worklist</h2>
                 <p className="text-gray-500">Priority queue: high dollar (&gt;$5,000) and oldest claims first.</p>
               </div>
-              <div className="flex items-center gap-3 text-sm">
-                <span className="flex items-center gap-1 rounded-full bg-red-100 px-3 py-1 text-red-800 font-medium">
-                  <AlertTriangle size={14} /> {highPriorityCount} High Priority
-                </span>
-                <span className="text-gray-400">{totalClaims} total claims</span>
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <label className="text-sm font-medium text-gray-600">User:</label>
+                  <select
+                    value={worklistUserId}
+                    onChange={(e) => handleWorklistUserChange(e.target.value)}
+                    className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm text-gray-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                  >
+                    <option value="">All Users</option>
+                    {testUsers.map((u) => (
+                      <option key={u.id} value={u.id}>{u.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex items-center gap-3 text-sm">
+                  <span className="flex items-center gap-1 rounded-full bg-red-100 px-3 py-1 text-red-800 font-medium">
+                    <AlertTriangle size={14} /> {highPriorityCount} High Priority
+                  </span>
+                  <span className="text-gray-400">{totalClaims} total claims</span>
+                </div>
               </div>
             </div>
+
+            {worklistUserId && (
+              <div className="rounded-md bg-amber-50 border border-amber-200 px-4 py-2 text-sm text-amber-800">
+                Showing claims for <span className="font-semibold">{testUsers.find((u) => u.id === worklistUserId)?.name}</span> based on their assigned claim types, workbaskets, and subtypes.
+              </div>
+            )}
 
             {/* Navigation */}
             <div className="flex items-center justify-between rounded-lg bg-white border border-gray-200 px-5 py-3">
