@@ -116,6 +116,33 @@ function generateClaims(): Claim[] {
       }
     }
   }
+
+  // Add extra low-amount Debt/ATM claims (<$200)
+  for (const basket of workbaskets) {
+    const subtypes = workbasketSubtypes[basket]
+    const subtypeList = subtypes.length > 0 ? subtypes : ['']
+    for (const subtype of subtypeList) {
+      const count = Math.floor(Math.random() * 8) + 5
+      for (let i = 0; i < count; i++) {
+        const dayOffset = Math.floor(Math.random() * 90)
+        const date = new Date(2026, 2, 7)
+        date.setDate(date.getDate() - dayOffset)
+        const amount = (Math.random() * 150 + 5).toFixed(2)
+        claims.push({
+          id: `CLM-${String(claimId).padStart(4, '0')}`,
+          claimType: 'Debt/ATM',
+          workbasket: basket,
+          subtype,
+          customer: customerNames[Math.floor(Math.random() * customerNames.length)],
+          status: statuses[Math.floor(Math.random() * statuses.length)],
+          date: date.toISOString().split('T')[0],
+          amount: `$${amount}`,
+        })
+        claimId++
+      }
+    }
+  }
+
   return claims
 }
 
