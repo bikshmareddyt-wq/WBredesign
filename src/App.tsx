@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import './App.css'
 import {
   Search,
@@ -16,6 +16,17 @@ type SidebarSection =
   | 'stopPayment'
   | 'permissions'
   | 'workbasket'
+
+interface Claim {
+  id: string
+  claimType: string
+  workbasket: string
+  subtype: string
+  customer: string
+  status: string
+  date: string
+  amount: string
+}
 
 const claimTypes = [
   'All',
@@ -42,11 +53,93 @@ const workbasketSubtypes: Record<string, string[]> = {
   'Manager Approvals': [],
 }
 
+const statuses = ['Pending', 'Approved', 'Rejected', 'In Review', 'Escalated', 'Resolved']
+const statusColors: Record<string, string> = {
+  Pending: 'bg-yellow-100 text-yellow-800',
+  Approved: 'bg-green-100 text-green-800',
+  Rejected: 'bg-red-100 text-red-800',
+  'In Review': 'bg-blue-100 text-blue-800',
+  Escalated: 'bg-purple-100 text-purple-800',
+  Resolved: 'bg-gray-100 text-gray-800',
+}
+
+const customerNames = [
+  'John Smith', 'Jane Doe', 'Robert Wilson', 'Emily Davis', 'Michael Brown',
+  'Sarah Johnson', 'David Lee', 'Lisa Anderson', 'James Taylor', 'Maria Garcia',
+  'William Martinez', 'Jennifer Thomas', 'Richard Jackson', 'Patricia White',
+  'Charles Harris', 'Linda Clark', 'Joseph Lewis', 'Barbara Robinson', 'Thomas Walker',
+  'Margaret Hall', 'Daniel Allen', 'Susan Young', 'Matthew King', 'Dorothy Wright',
+  'Anthony Lopez', 'Karen Hill', 'Mark Scott', 'Nancy Green', 'Steven Adams',
+  'Betty Baker', 'Paul Nelson', 'Sandra Carter', 'Andrew Mitchell', 'Ashley Perez',
+  'Joshua Roberts', 'Kimberly Turner', 'Kenneth Phillips', 'Donna Campbell',
+  'Kevin Parker', 'Michelle Evans', 'Brian Edwards', 'Carol Collins', 'George Stewart',
+  'Amanda Sanchez', 'Edward Morris', 'Melissa Rogers', 'Ronald Reed', 'Deborah Cook',
+]
+
+function generateClaims(): Claim[] {
+  const claims: Claim[] = []
+  const actualTypes = claimTypes.filter((t) => t !== 'All')
+  let claimId = 1
+
+  for (const type of actualTypes) {
+    for (const basket of workbaskets) {
+      const subtypes = workbasketSubtypes[basket]
+      const subtypeList = subtypes.length > 0 ? subtypes : ['']
+
+      for (const subtype of subtypeList) {
+        const count = Math.floor(Math.random() * 12) + 4
+        for (let i = 0; i < count; i++) {
+          const dayOffset = Math.floor(Math.random() * 90)
+          const date = new Date(2026, 2, 7)
+          date.setDate(date.getDate() - dayOffset)
+          const amount = (Math.random() * 9500 + 50).toFixed(2)
+          claims.push({
+            id: `CLM-${String(claimId).padStart(4, '0')}`,
+            claimType: type,
+            workbasket: basket,
+            subtype,
+            customer: customerNames[Math.floor(Math.random() * customerNames.length)],
+            status: statuses[Math.floor(Math.random() * statuses.length)],
+            date: date.toISOString().split('T')[0],
+            amount: `$${amount}`,
+          })
+          claimId++
+        }
+      }
+    }
+  }
+  return claims
+}
+
+const allClaims = generateClaims()
+
 function App() {
   const [activeSection, setActiveSection] = useState<SidebarSection>('workbasket')
   const [selectedClaimType, setSelectedClaimType] = useState('All')
   const [selectedWorkbasket, setSelectedWorkbasket] = useState('Ready To Work')
   const [selectedSubtype, setSelectedSubtype] = useState('Initial Review')
+
+  const claimCountByType = useMemo(() => {
+    const counts: Record<string, number> = {}
+    for (const type of claimTypes) {
+      if (type === 'All') {
+        counts[type] = allClaims.length
+      } else {
+        counts[type] = allClaims.filter((c) => c.claimType === type).length
+      }
+    }
+    return counts
+  }, [])
+
+  const filteredClaims = useMemo(() => {
+    return allClaims.filter((c) => {
+      if (selectedClaimType !== 'All' && c.claimType !== selectedClaimType) return false
+      if (c.workbasket !== selectedWorkbasket) return false
+      const subtypes = workbasketSubtypes[selectedWorkbasket]
+      if (subtypes.length > 0 && c.subtype !== selectedSubtype) return false
+      return true
+    })
+  }, [selectedClaimType, selectedWorkbasket, selectedSubtype])
 
   const sidebarItems: {
     id: SidebarSection
@@ -138,7 +231,7 @@ function App() {
                 >
                   {claimTypes.map((type) => (
                     <option key={type} value={type}>
-                      {type}
+                      {type} ({claimCountByType[type]})
                     </option>
                   ))}
                 </select>
@@ -196,6 +289,9 @@ function App() {
                 </>
               )}
             </p>
+            <p className="text-xs text-gray-400">
+              Showing {filteredClaims.length} claim{filteredClaims.length !== 1 ? 's' : ''}
+            </p>
             <div className="overflow-hidden rounded-lg border border-gray-200">
               <table className="w-full text-left text-sm">
                 <thead className="bg-gray-50">
@@ -203,55 +299,33 @@ function App() {
                     <th className="px-4 py-3 font-medium text-gray-600">Claim ID</th>
                     <th className="px-4 py-3 font-medium text-gray-600">Type</th>
                     <th className="px-4 py-3 font-medium text-gray-600">Customer</th>
+                    <th className="px-4 py-3 font-medium text-gray-600">Amount</th>
                     <th className="px-4 py-3 font-medium text-gray-600">Status</th>
                     <th className="px-4 py-3 font-medium text-gray-600">Date</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
-                  <tr className="hover:bg-gray-50 transition-colors">
-                    <td className="px-4 py-3 font-mono text-blue-600">CLM-001</td>
-                    <td className="px-4 py-3">Debt/ATM</td>
-                    <td className="px-4 py-3">John Smith</td>
-                    <td className="px-4 py-3">
-                      <span className="rounded-full bg-yellow-100 px-2.5 py-0.5 text-xs font-medium text-yellow-800">
-                        Pending
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-gray-500">2026-03-05</td>
-                  </tr>
-                  <tr className="hover:bg-gray-50 transition-colors">
-                    <td className="px-4 py-3 font-mono text-blue-600">CLM-002</td>
-                    <td className="px-4 py-3">ACH</td>
-                    <td className="px-4 py-3">Jane Doe</td>
-                    <td className="px-4 py-3">
-                      <span className="rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">
-                        Approved
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-gray-500">2026-03-04</td>
-                  </tr>
-                  <tr className="hover:bg-gray-50 transition-colors">
-                    <td className="px-4 py-3 font-mono text-blue-600">CLM-003</td>
-                    <td className="px-4 py-3">Check</td>
-                    <td className="px-4 py-3">Robert Wilson</td>
-                    <td className="px-4 py-3">
-                      <span className="rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-800">
-                        Rejected
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-gray-500">2026-03-03</td>
-                  </tr>
-                  <tr className="hover:bg-gray-50 transition-colors">
-                    <td className="px-4 py-3 font-mono text-blue-600">CLM-004</td>
-                    <td className="px-4 py-3">Credit Card</td>
-                    <td className="px-4 py-3">Emily Davis</td>
-                    <td className="px-4 py-3">
-                      <span className="rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-800">
-                        In Review
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-gray-500">2026-03-02</td>
-                  </tr>
+                  {filteredClaims.map((claim) => (
+                    <tr key={claim.id} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-4 py-3 font-mono text-blue-600">{claim.id}</td>
+                      <td className="px-4 py-3">{claim.claimType}</td>
+                      <td className="px-4 py-3">{claim.customer}</td>
+                      <td className="px-4 py-3 font-medium">{claim.amount}</td>
+                      <td className="px-4 py-3">
+                        <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${statusColors[claim.status]}`}>
+                          {claim.status}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-gray-500">{claim.date}</td>
+                    </tr>
+                  ))}
+                  {filteredClaims.length === 0 && (
+                    <tr>
+                      <td colSpan={6} className="px-4 py-8 text-center text-gray-400">
+                        No claims found for this selection
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
