@@ -184,7 +184,6 @@ const testUsers: TestUser[] = [
 
 const initialAssignments: RoleAssignment[] = [
   { id: 'RA001', userId: 'U001', role: 'Processor', claimType: 'Debt/ATM', workbasket: 'Ready To Work', subtype: 'Initial Review' },
-  { id: 'RA002', userId: 'U001', role: 'Processor', claimType: 'ACH', workbasket: 'Ready To Work', subtype: 'Enhanced Review' },
   { id: 'RA003', userId: 'U002', role: 'Reviewer', claimType: 'Check', workbasket: 'Ready To Work', subtype: 'Initial Review' },
   { id: 'RA004', userId: 'U002', role: 'Processor', claimType: 'Credit Card', workbasket: 'Pending', subtype: '' },
   { id: 'RA005', userId: 'U003', role: 'Processor', claimType: 'Debt/ATM', workbasket: 'Recovery', subtype: 'Chargeback' },
