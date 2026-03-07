@@ -10,6 +10,11 @@ import {
   Plus,
   Trash2,
   Shield,
+  ChevronLeft,
+  ChevronRight,
+  AlertTriangle,
+  DollarSign,
+  Calendar,
 } from 'lucide-react'
 
 type SidebarSection =
@@ -281,6 +286,27 @@ function App() {
     }
   }
 
+  // User Worklist state
+  const [worklistIndex, setWorklistIndex] = useState(0)
+
+  const prioritizedClaims = useMemo(() => {
+    const sorted = [...allClaims].sort((a, b) => {
+      const amountA = parseFloat(a.amount.replace('$', ''))
+      const amountB = parseFloat(b.amount.replace('$', ''))
+      const isHighA = amountA > 5000
+      const isHighB = amountB > 5000
+      // High dollar claims first
+      if (isHighA && !isHighB) return -1
+      if (!isHighA && isHighB) return 1
+      // Within same priority group, oldest first
+      if (a.date < b.date) return -1
+      if (a.date > b.date) return 1
+      // If same date, higher amount first
+      return amountB - amountA
+    })
+    return sorted
+  }, [])
+
   const claimCountByType = useMemo(() => {
     const counts: Record<string, number> = {}
     for (const type of claimTypes) {
@@ -349,16 +375,156 @@ function App() {
             </button>
           </div>
         )
-      case 'userWorklist':
+      case 'userWorklist': {
+        const currentClaim = prioritizedClaims[worklistIndex]
+        const totalClaims = prioritizedClaims.length
+        const highPriorityCount = prioritizedClaims.filter((c) => parseFloat(c.amount.replace('$', '')) > 5000).length
+        const currentAmount = currentClaim ? parseFloat(currentClaim.amount.replace('$', '')) : 0
+        const isHighPriority = currentAmount > 5000
         return (
-          <div className="space-y-4">
-            <h2 className="text-2xl font-semibold text-gray-800">User Worklist</h2>
-            <p className="text-gray-500">View and manage your assigned tasks.</p>
-            <div className="rounded-lg border border-gray-200 bg-white p-6 text-center text-gray-400">
-              No items in your worklist
+          <div className="space-y-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-2xl font-semibold text-gray-800">User Worklist</h2>
+                <p className="text-gray-500">Priority queue: high dollar (&gt;$5,000) and oldest claims first.</p>
+              </div>
+              <div className="flex items-center gap-3 text-sm">
+                <span className="flex items-center gap-1 rounded-full bg-red-100 px-3 py-1 text-red-800 font-medium">
+                  <AlertTriangle size={14} /> {highPriorityCount} High Priority
+                </span>
+                <span className="text-gray-400">{totalClaims} total claims</span>
+              </div>
+            </div>
+
+            {/* Navigation */}
+            <div className="flex items-center justify-between rounded-lg bg-white border border-gray-200 px-5 py-3">
+              <button
+                onClick={() => setWorklistIndex(Math.max(0, worklistIndex - 1))}
+                disabled={worklistIndex === 0}
+                className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+                  worklistIndex === 0
+                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                    : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                <ChevronLeft size={16} /> Previous Claim
+              </button>
+              <span className="text-sm font-medium text-gray-600">
+                Claim {worklistIndex + 1} of {totalClaims}
+              </span>
+              <button
+                onClick={() => setWorklistIndex(Math.min(totalClaims - 1, worklistIndex + 1))}
+                disabled={worklistIndex >= totalClaims - 1}
+                className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+                  worklistIndex >= totalClaims - 1
+                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                    : 'bg-blue-600 text-white hover:bg-blue-700'
+                }`}
+              >
+                Next Claim <ChevronRight size={16} />
+              </button>
+            </div>
+
+            {/* Current Claim Detail */}
+            {currentClaim && (
+              <div className={`rounded-lg border-2 ${
+                isHighPriority ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-white'
+              } p-6 space-y-5`}>
+                {isHighPriority && (
+                  <div className="flex items-center gap-2 rounded-md bg-red-100 px-3 py-2 text-sm font-semibold text-red-800">
+                    <AlertTriangle size={16} /> HIGH PRIORITY &mdash; Amount exceeds $5,000
+                  </div>
+                )}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl font-bold font-mono text-blue-600">{currentClaim.id}</span>
+                    <span className={`rounded-full px-3 py-1 text-xs font-medium ${statusColors[currentClaim.status]}`}>
+                      {currentClaim.status}
+                    </span>
+                  </div>
+                  <span className="text-sm text-gray-400">Priority #{worklistIndex + 1}</span>
+                </div>
+
+                <div className="grid grid-cols-3 gap-6">
+                  <div className="space-y-1">
+                    <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">Claim Type</p>
+                    <p className="text-sm font-semibold text-gray-800">{currentClaim.claimType}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">Workbasket</p>
+                    <p className="text-sm font-semibold text-gray-800">{currentClaim.workbasket}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">Subtype</p>
+                    <p className="text-sm font-semibold text-gray-800">{currentClaim.subtype || '\u2014'}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">Customer</p>
+                    <p className="text-sm font-semibold text-gray-800">{currentClaim.customer}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs font-medium text-gray-400 uppercase tracking-wide flex items-center gap-1"><DollarSign size={12} /> Amount</p>
+                    <p className={`text-lg font-bold ${isHighPriority ? 'text-red-700' : 'text-gray-800'}`}>{currentClaim.amount}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs font-medium text-gray-400 uppercase tracking-wide flex items-center gap-1"><Calendar size={12} /> Date Opened</p>
+                    <p className="text-sm font-semibold text-gray-800">{currentClaim.date}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Upcoming claims preview */}
+            <div>
+              <h3 className="text-sm font-semibold text-gray-600 mb-2">Upcoming Claims</h3>
+              <div className="overflow-hidden rounded-lg border border-gray-200">
+                <table className="w-full text-left text-sm">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-4 py-2.5 font-medium text-gray-600">#</th>
+                      <th className="px-4 py-2.5 font-medium text-gray-600">Claim ID</th>
+                      <th className="px-4 py-2.5 font-medium text-gray-600">Type</th>
+                      <th className="px-4 py-2.5 font-medium text-gray-600">Customer</th>
+                      <th className="px-4 py-2.5 font-medium text-gray-600">Amount</th>
+                      <th className="px-4 py-2.5 font-medium text-gray-600">Date</th>
+                      <th className="px-4 py-2.5 font-medium text-gray-600">Priority</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {prioritizedClaims.slice(worklistIndex, worklistIndex + 10).map((claim, idx) => {
+                      const amt = parseFloat(claim.amount.replace('$', ''))
+                      const isHigh = amt > 5000
+                      return (
+                        <tr
+                          key={claim.id}
+                          className={`transition-colors cursor-pointer ${
+                            idx === 0 ? 'bg-blue-50 font-medium' : 'hover:bg-gray-50'
+                          }`}
+                          onClick={() => setWorklistIndex(worklistIndex + idx)}
+                        >
+                          <td className="px-4 py-2.5 text-gray-400">{worklistIndex + idx + 1}</td>
+                          <td className="px-4 py-2.5 font-mono text-blue-600">{claim.id}</td>
+                          <td className="px-4 py-2.5">{claim.claimType}</td>
+                          <td className="px-4 py-2.5">{claim.customer}</td>
+                          <td className={`px-4 py-2.5 font-medium ${isHigh ? 'text-red-700' : ''}`}>{claim.amount}</td>
+                          <td className="px-4 py-2.5 text-gray-500">{claim.date}</td>
+                          <td className="px-4 py-2.5">
+                            {isHigh ? (
+                              <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-800">High</span>
+                            ) : (
+                              <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">Normal</span>
+                            )}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         )
+      }
       case 'stopPayment':
         return (
           <div className="space-y-4">
