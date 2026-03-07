@@ -35,10 +35,18 @@ const workbaskets = [
   'Manager Approvals',
 ]
 
+const workbasketSubtypes: Record<string, string[]> = {
+  'Ready To Work': ['Initial Review', 'Enhanced Review', 'Exception'],
+  'Pending': [],
+  'Recovery': ['Chargeback', 'Exception'],
+  'Manager Approvals': [],
+}
+
 function App() {
   const [activeSection, setActiveSection] = useState<SidebarSection>('workbasket')
   const [selectedClaimType, setSelectedClaimType] = useState('All')
   const [selectedWorkbasket, setSelectedWorkbasket] = useState('Ready To Work')
+  const [selectedSubtype, setSelectedSubtype] = useState('Initial Review')
 
   const sidebarItems: {
     id: SidebarSection
@@ -142,7 +150,11 @@ function App() {
               {workbaskets.map((basket) => (
                 <button
                   key={basket}
-                  onClick={() => setSelectedWorkbasket(basket)}
+                  onClick={() => {
+                    setSelectedWorkbasket(basket)
+                    const subtypes = workbasketSubtypes[basket]
+                    setSelectedSubtype(subtypes.length > 0 ? subtypes[0] : '')
+                  }}
                   className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
                     selectedWorkbasket === basket
                       ? 'bg-blue-600 text-white shadow-sm'
@@ -154,10 +166,35 @@ function App() {
               ))}
             </div>
 
+            {/* Subtype selection */}
+            {workbasketSubtypes[selectedWorkbasket].length > 0 && (
+              <div className="flex gap-2">
+                {workbasketSubtypes[selectedWorkbasket].map((subtype) => (
+                  <button
+                    key={subtype}
+                    onClick={() => setSelectedSubtype(subtype)}
+                    className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+                      selectedSubtype === subtype
+                        ? 'bg-blue-100 text-blue-700 border border-blue-300'
+                        : 'bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200'
+                    }`}
+                  >
+                    {subtype}
+                  </button>
+                ))}
+              </div>
+            )}
+
             <p className="text-gray-500">
               Viewing <span className="font-semibold text-blue-600">{selectedClaimType}</span>
               {' '}&mdash;{' '}
               <span className="font-semibold text-blue-600">{selectedWorkbasket}</span>
+              {selectedSubtype && (
+                <>
+                  {' '}&rsaquo;{' '}
+                  <span className="font-semibold text-blue-600">{selectedSubtype}</span>
+                </>
+              )}
             </p>
             <div className="overflow-hidden rounded-lg border border-gray-200">
               <table className="w-full text-left text-sm">
