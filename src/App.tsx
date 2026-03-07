@@ -178,6 +178,7 @@ function App() {
   const [selectedClaimType, setSelectedClaimType] = useState('All')
   const [selectedWorkbasket, setSelectedWorkbasket] = useState('Ready To Work')
   const [selectedSubtype, setSelectedSubtype] = useState('Initial Review')
+  const [selectedUserId, setSelectedUserId] = useState('')
 
   // Permissions state
   const [assignments, setAssignments] = useState<RoleAssignment[]>(initialAssignments)
@@ -210,6 +211,69 @@ function App() {
 
   const handleDeleteAssignment = (id: string) => {
     setAssignments(assignments.filter((a) => a.id !== id))
+  }
+
+  // Compute allowed claim types, workbaskets, subtypes based on selected user's permissions
+  const userPermissions = useMemo(() => {
+    if (!selectedUserId) {
+      return {
+        claimTypes: claimTypes,
+        workbaskets: workbaskets,
+        getSubtypes: (wb: string) => workbasketSubtypes[wb],
+        hasAll: true,
+      }
+    }
+    const userAssigns = assignments.filter((a) => a.userId === selectedUserId)
+    const hasAllClaimType = userAssigns.some((a) => a.claimType === 'All')
+    const allowedTypes = new Set<string>()
+    if (hasAllClaimType) {
+      claimTypes.forEach((t) => allowedTypes.add(t))
+    } else {
+      allowedTypes.add('All')
+      userAssigns.forEach((a) => allowedTypes.add(a.claimType))
+    }
+    const allowedWorkbaskets = new Set<string>()
+    userAssigns.forEach((a) => allowedWorkbaskets.add(a.workbasket))
+    const getSubtypes = (wb: string) => {
+      const allSubs = workbasketSubtypes[wb]
+      if (allSubs.length === 0) return []
+      const userSubs = userAssigns
+        .filter((a) => a.workbasket === wb && a.subtype)
+        .map((a) => a.subtype)
+      // If user has 'All' claim type for this workbasket with no specific subtype, show all
+      const hasWbAll = userAssigns.some((a) => a.workbasket === wb && a.claimType === 'All' && !a.subtype)
+      if (hasWbAll) return allSubs
+      return allSubs.filter((s) => userSubs.includes(s))
+    }
+    return {
+      claimTypes: claimTypes.filter((t) => allowedTypes.has(t)),
+      workbaskets: workbaskets.filter((w) => allowedWorkbaskets.has(w)),
+      getSubtypes,
+      hasAll: hasAllClaimType,
+    }
+  }, [selectedUserId, assignments])
+
+  const handleUserChange = (userId: string) => {
+    setSelectedUserId(userId)
+    // Reset selections when user changes
+    setSelectedClaimType('All')
+    if (!userId) {
+      setSelectedWorkbasket('Ready To Work')
+      setSelectedSubtype('Initial Review')
+    } else {
+      const userAssigns = assignments.filter((a) => a.userId === userId)
+      const firstWb = workbaskets.find((w) => userAssigns.some((a) => a.workbasket === w)) || workbaskets[0]
+      setSelectedWorkbasket(firstWb)
+      const subs = workbasketSubtypes[firstWb]
+      if (subs.length > 0) {
+        const userSubs = userAssigns.filter((a) => a.workbasket === firstWb && a.subtype).map((a) => a.subtype)
+        const hasWbAll = userAssigns.some((a) => a.workbasket === firstWb && a.claimType === 'All' && !a.subtype)
+        const firstSub = hasWbAll ? subs[0] : (subs.find((s) => userSubs.includes(s)) || '')
+        setSelectedSubtype(firstSub)
+      } else {
+        setSelectedSubtype('')
+      }
+    }
   }
 
   const claimCountByType = useMemo(() => {
@@ -541,36 +605,60 @@ function App() {
             </div>
           </div>
         )
-      case 'workbasket':
+      case 'workbasket': {
+        const visibleClaimTypes = userPermissions.claimTypes
+        const visibleWorkbaskets = userPermissions.workbaskets
+        const visibleSubtypes = userPermissions.getSubtypes(selectedWorkbasket)
         return (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="text-2xl font-semibold text-gray-800">Workbasket</h2>
-              <div className="flex items-center gap-3">
-                <label className="text-sm font-medium text-gray-600">Claim Type:</label>
-                <select
-                  value={selectedClaimType}
-                  onChange={(e) => setSelectedClaimType(e.target.value)}
-                  className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm text-gray-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
-                >
-                  {claimTypes.map((type) => (
-                    <option key={type} value={type}>
-                      {type} ({claimCountByType[type]})
-                    </option>
-                  ))}
-                </select>
+              <div className="flex items-center gap-6">
+                <div className="flex items-center gap-2">
+                  <label className="text-sm font-medium text-gray-600">User:</label>
+                  <select
+                    value={selectedUserId}
+                    onChange={(e) => handleUserChange(e.target.value)}
+                    className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm text-gray-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                  >
+                    <option value="">All Users (No Filter)</option>
+                    {testUsers.map((u) => (
+                      <option key={u.id} value={u.id}>{u.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex items-center gap-2">
+                  <label className="text-sm font-medium text-gray-600">Claim Type:</label>
+                  <select
+                    value={selectedClaimType}
+                    onChange={(e) => setSelectedClaimType(e.target.value)}
+                    className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm text-gray-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                  >
+                    {visibleClaimTypes.map((type) => (
+                      <option key={type} value={type}>
+                        {type} ({claimCountByType[type]})
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
             </div>
 
+            {selectedUserId && (
+              <div className="rounded-md bg-amber-50 border border-amber-200 px-4 py-2 text-sm text-amber-800">
+                Viewing as <span className="font-semibold">{testUsers.find((u) => u.id === selectedUserId)?.name}</span> &mdash; only permitted claim types, workbaskets, and subtypes are shown.
+              </div>
+            )}
+
             {/* Workbasket selection tabs */}
             <div className="flex gap-3">
-              {workbaskets.map((basket) => (
+              {visibleWorkbaskets.map((basket) => (
                 <button
                   key={basket}
                   onClick={() => {
                     setSelectedWorkbasket(basket)
-                    const subtypes = workbasketSubtypes[basket]
-                    setSelectedSubtype(subtypes.length > 0 ? subtypes[0] : '')
+                    const subs = userPermissions.getSubtypes(basket)
+                    setSelectedSubtype(subs.length > 0 ? subs[0] : '')
                   }}
                   className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
                     selectedWorkbasket === basket
@@ -584,9 +672,9 @@ function App() {
             </div>
 
             {/* Subtype selection */}
-            {workbasketSubtypes[selectedWorkbasket].length > 0 && (
+            {visibleSubtypes.length > 0 && (
               <div className="flex gap-2">
-                {workbasketSubtypes[selectedWorkbasket].map((subtype) => (
+                {visibleSubtypes.map((subtype) => (
                   <button
                     key={subtype}
                     onClick={() => setSelectedSubtype(subtype)}
@@ -655,6 +743,7 @@ function App() {
             </div>
           </div>
         )
+      }
       default:
         return null
     }
