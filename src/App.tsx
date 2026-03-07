@@ -147,6 +147,7 @@ const testUsers: TestUser[] = [
   { id: 'U010', name: 'Jack Robinson', email: 'jack.robinson@company.com', department: 'Claims Processing' },
   { id: 'U011', name: 'Kate Wilson', email: 'kate.wilson@company.com', department: 'Management' },
   { id: 'U012', name: 'Leo Nguyen', email: 'leo.nguyen@company.com', department: 'Recovery' },
+  { id: 'U013', name: 'Bikshma R Thatikonda', email: 'bikshma.thatikonda@company.com', department: 'Management' },
 ]
 
 const initialAssignments: RoleAssignment[] = [
@@ -171,6 +172,10 @@ const initialAssignments: RoleAssignment[] = [
   { id: 'RA019', userId: 'U011', role: 'Manager', claimType: 'Check', workbasket: 'Manager Approvals', subtype: '' },
   { id: 'RA020', userId: 'U012', role: 'Processor', claimType: 'Credit Card', workbasket: 'Recovery', subtype: 'Exception' },
   { id: 'RA021', userId: 'U012', role: 'Processor', claimType: 'IDT', workbasket: 'Recovery', subtype: 'Chargeback' },
+  { id: 'RA022', userId: 'U013', role: 'Admin', claimType: 'All', workbasket: 'Ready To Work', subtype: '' },
+  { id: 'RA023', userId: 'U013', role: 'Admin', claimType: 'All', workbasket: 'Pending', subtype: '' },
+  { id: 'RA024', userId: 'U013', role: 'Admin', claimType: 'All', workbasket: 'Recovery', subtype: '' },
+  { id: 'RA025', userId: 'U013', role: 'Admin', claimType: 'All', workbasket: 'Manager Approvals', subtype: '' },
 ]
 
 function App() {
@@ -615,19 +620,6 @@ function App() {
               <h2 className="text-2xl font-semibold text-gray-800">Workbasket</h2>
               <div className="flex items-center gap-6">
                 <div className="flex items-center gap-2">
-                  <label className="text-sm font-medium text-gray-600">User:</label>
-                  <select
-                    value={selectedUserId}
-                    onChange={(e) => handleUserChange(e.target.value)}
-                    className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm text-gray-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
-                  >
-                    <option value="">All Users (No Filter)</option>
-                    {testUsers.map((u) => (
-                      <option key={u.id} value={u.id}>{u.name}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="flex items-center gap-2">
                   <label className="text-sm font-medium text-gray-600">Claim Type:</label>
                   <select
                     value={selectedClaimType}
@@ -638,6 +630,19 @@ function App() {
                       <option key={type} value={type}>
                         {type} ({claimCountByType[type]})
                       </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex items-center gap-2">
+                  <label className="text-sm font-medium text-gray-600">User:</label>
+                  <select
+                    value={selectedUserId}
+                    onChange={(e) => handleUserChange(e.target.value)}
+                    className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm text-gray-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                  >
+                    <option value="">All Users (No Filter)</option>
+                    {testUsers.map((u) => (
+                      <option key={u.id} value={u.id}>{u.name}</option>
                     ))}
                   </select>
                 </div>
