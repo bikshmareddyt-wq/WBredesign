@@ -28,9 +28,17 @@ const claimTypes = [
   'IDT',
 ]
 
+const workbaskets = [
+  'Ready To Work',
+  'Pending',
+  'Recovery',
+  'Manager Approvals',
+]
+
 function App() {
   const [activeSection, setActiveSection] = useState<SidebarSection>('workbasket')
   const [selectedClaimType, setSelectedClaimType] = useState('All')
+  const [selectedWorkbasket, setSelectedWorkbasket] = useState('Ready To Work')
 
   const sidebarItems: {
     id: SidebarSection
@@ -128,8 +136,28 @@ function App() {
                 </select>
               </div>
             </div>
+
+            {/* Workbasket selection tabs */}
+            <div className="flex gap-3">
+              {workbaskets.map((basket) => (
+                <button
+                  key={basket}
+                  onClick={() => setSelectedWorkbasket(basket)}
+                  className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+                    selectedWorkbasket === basket
+                      ? 'bg-blue-600 text-white shadow-sm'
+                      : 'bg-white text-gray-600 border border-gray-300 hover:bg-gray-50'
+                  }`}
+                >
+                  {basket}
+                </button>
+              ))}
+            </div>
+
             <p className="text-gray-500">
-              Viewing claims for: <span className="font-semibold text-blue-600">{selectedClaimType}</span>
+              Viewing <span className="font-semibold text-blue-600">{selectedClaimType}</span>
+              {' '}&mdash;{' '}
+              <span className="font-semibold text-blue-600">{selectedWorkbasket}</span>
             </p>
             <div className="overflow-hidden rounded-lg border border-gray-200">
               <table className="w-full text-left text-sm">
