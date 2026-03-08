@@ -30,10 +30,12 @@ interface Claim {
   claimType: string
   workbasket: string
   subtype: string
+  claimSubtype: string
   customer: string
   status: string
   date: string
   amount: string
+  regEDate: string
 }
 
 const claimTypes = [
@@ -59,6 +61,13 @@ const workbasketSubtypes: Record<string, string[]> = {
   'Pending': [],
   'Recovery': ['Chargeback', 'Exception'],
   'Manager Approvals': [],
+}
+
+// ATM/Debit claim subtypes based on workbasket subtype
+const atmDebitClaimSubtypes: Record<string, string[]> = {
+  'Initial Review': ['Day 10 - ATM', 'Day 10 - Debit', 'Stop Payment'],
+  'Enhanced Review': ['Second Review', 'Expedite', 'Cancel', 'Revoke Stop Pay'],
+  'Exception': [],
 }
 
 const statuses = ['Pending', 'Approved', 'Rejected', 'In Review', 'Escalated', 'Resolved']
@@ -101,15 +110,26 @@ function generateClaims(): Claim[] {
           const date = new Date(2026, 2, 7)
           date.setDate(date.getDate() - dayOffset)
           const amount = (Math.random() * 9500 + 50).toFixed(2)
+          // Generate Reg E date (10 business days after claim date)
+          const regEDateObj = new Date(date)
+          regEDateObj.setDate(regEDateObj.getDate() + 14)
+          // Assign claim subtype for ATM/Debit claims based on workbasket subtype
+          let claimSubtype = ''
+          if (type === 'Debt/ATM' && subtype && atmDebitClaimSubtypes[subtype]?.length > 0) {
+            const subs = atmDebitClaimSubtypes[subtype]
+            claimSubtype = subs[Math.floor(Math.random() * subs.length)]
+          }
           claims.push({
             id: `CLM-${String(claimId).padStart(4, '0')}`,
             claimType: type,
             workbasket: basket,
             subtype,
+            claimSubtype,
             customer: customerNames[Math.floor(Math.random() * customerNames.length)],
             status: statuses[Math.floor(Math.random() * statuses.length)],
             date: date.toISOString().split('T')[0],
             amount: `$${amount}`,
+            regEDate: regEDateObj.toISOString().split('T')[0],
           })
           claimId++
         }
@@ -128,15 +148,24 @@ function generateClaims(): Claim[] {
         const date = new Date(2026, 2, 7)
         date.setDate(date.getDate() - dayOffset)
         const amount = (Math.random() * 150 + 5).toFixed(2)
+        const regEDateObj2 = new Date(date)
+        regEDateObj2.setDate(regEDateObj2.getDate() + 14)
+        let claimSubtype2 = ''
+        if (subtype && atmDebitClaimSubtypes[subtype]?.length > 0) {
+          const subs = atmDebitClaimSubtypes[subtype]
+          claimSubtype2 = subs[Math.floor(Math.random() * subs.length)]
+        }
         claims.push({
           id: `CLM-${String(claimId).padStart(4, '0')}`,
           claimType: 'Debt/ATM',
           workbasket: basket,
           subtype,
+          claimSubtype: claimSubtype2,
           customer: customerNames[Math.floor(Math.random() * customerNames.length)],
           status: statuses[Math.floor(Math.random() * statuses.length)],
           date: date.toISOString().split('T')[0],
           amount: `$${amount}`,
+          regEDate: regEDateObj2.toISOString().split('T')[0],
         })
         claimId++
       }
@@ -215,6 +244,7 @@ function App() {
   const [selectedWorkbasket, setSelectedWorkbasket] = useState('Ready To Work')
   const [selectedSubtype, setSelectedSubtype] = useState('Initial Review')
   const [selectedUserId, setSelectedUserId] = useState('')
+  const [selectedClaimSubtype, setSelectedClaimSubtype] = useState('')
 
   // Permissions state
   const [assignments, setAssignments] = useState<RoleAssignment[]>(initialAssignments)
@@ -381,9 +411,19 @@ function App() {
       if (c.workbasket !== selectedWorkbasket) return false
       const subtypes = workbasketSubtypes[selectedWorkbasket]
       if (subtypes.length > 0 && c.subtype !== selectedSubtype) return false
+      if (selectedClaimSubtype && c.claimSubtype !== selectedClaimSubtype) return false
       return true
     })
-  }, [selectedClaimType, selectedWorkbasket, selectedSubtype])
+  }, [selectedClaimType, selectedWorkbasket, selectedSubtype, selectedClaimSubtype])
+
+  // Get available claim subtypes for current selection (ATM/Debit only)
+  const availableClaimSubtypes = useMemo(() => {
+    if (selectedClaimType === 'Debt/ATM' || selectedClaimType === 'All') {
+      const subs = atmDebitClaimSubtypes[selectedSubtype]
+      return subs || []
+    }
+    return []
+  }, [selectedClaimType, selectedSubtype])
 
   const sidebarItems: {
     id: SidebarSection
@@ -522,7 +562,29 @@ function App() {
                   <span className="text-sm text-gray-400">Priority #{worklistIndex + 1}</span>
                 </div>
 
-                <div className="grid grid-cols-3 gap-6">
+                <div className="grid grid-cols-4 gap-6">
+                  <div className="space-y-1">
+                    <p className="text-xs font-medium text-gray-400 uppercase tracking-wide flex items-center gap-1"><Calendar size={12} /> Claim Date</p>
+                    <p className="text-sm font-semibold text-gray-800">{currentClaim.date}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">Claim Status</p>
+                    <p className="text-sm font-semibold text-gray-800">
+                      <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${statusColors[currentClaim.status]}`}>{currentClaim.status}</span>
+                    </p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs font-medium text-gray-400 uppercase tracking-wide flex items-center gap-1"><DollarSign size={12} /> Dollar Amount</p>
+                    <p className={`text-lg font-bold ${isHighPriority ? 'text-red-700' : 'text-gray-800'}`}>{currentClaim.amount}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">Reg E Date</p>
+                    <p className="text-sm font-semibold text-gray-800">{currentClaim.regEDate}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">Sub Type</p>
+                    <p className="text-sm font-semibold text-gray-800">{currentClaim.claimSubtype || '\u2014'}</p>
+                  </div>
                   <div className="space-y-1">
                     <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">Claim Type</p>
                     <p className="text-sm font-semibold text-gray-800">{currentClaim.claimType}</p>
@@ -532,20 +594,8 @@ function App() {
                     <p className="text-sm font-semibold text-gray-800">{currentClaim.workbasket}</p>
                   </div>
                   <div className="space-y-1">
-                    <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">Subtype</p>
-                    <p className="text-sm font-semibold text-gray-800">{currentClaim.subtype || '\u2014'}</p>
-                  </div>
-                  <div className="space-y-1">
                     <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">Customer</p>
                     <p className="text-sm font-semibold text-gray-800">{currentClaim.customer}</p>
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-xs font-medium text-gray-400 uppercase tracking-wide flex items-center gap-1"><DollarSign size={12} /> Amount</p>
-                    <p className={`text-lg font-bold ${isHighPriority ? 'text-red-700' : 'text-gray-800'}`}>{currentClaim.amount}</p>
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-xs font-medium text-gray-400 uppercase tracking-wide flex items-center gap-1"><Calendar size={12} /> Date Opened</p>
-                    <p className="text-sm font-semibold text-gray-800">{currentClaim.date}</p>
                   </div>
                 </div>
               </div>
@@ -559,11 +609,12 @@ function App() {
                   <thead className="bg-gray-50">
                     <tr>
                       <th className="px-4 py-2.5 font-medium text-gray-600">#</th>
-                      <th className="px-4 py-2.5 font-medium text-gray-600">Claim ID</th>
-                      <th className="px-4 py-2.5 font-medium text-gray-600">Type</th>
-                      <th className="px-4 py-2.5 font-medium text-gray-600">Customer</th>
-                      <th className="px-4 py-2.5 font-medium text-gray-600">Amount</th>
-                      <th className="px-4 py-2.5 font-medium text-gray-600">Date</th>
+                      <th className="px-4 py-2.5 font-medium text-gray-600">Claim Date</th>
+                      <th className="px-4 py-2.5 font-medium text-gray-600">Claim Status</th>
+                      <th className="px-4 py-2.5 font-medium text-gray-600">Claim Number</th>
+                      <th className="px-4 py-2.5 font-medium text-gray-600">Dollar Amount</th>
+                      <th className="px-4 py-2.5 font-medium text-gray-600">Reg E Date</th>
+                      <th className="px-4 py-2.5 font-medium text-gray-600">Sub Type</th>
                       <th className="px-4 py-2.5 font-medium text-gray-600">Priority</th>
                     </tr>
                   </thead>
@@ -580,11 +631,14 @@ function App() {
                           onClick={() => setWorklistIndex(worklistIndex + idx)}
                         >
                           <td className="px-4 py-2.5 text-gray-400">{worklistIndex + idx + 1}</td>
+                          <td className="px-4 py-2.5 text-gray-700">{claim.date}</td>
+                          <td className="px-4 py-2.5">
+                            <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusColors[claim.status]}`}>{claim.status}</span>
+                          </td>
                           <td className="px-4 py-2.5 font-mono text-blue-600">{claim.id}</td>
-                          <td className="px-4 py-2.5">{claim.claimType}</td>
-                          <td className="px-4 py-2.5">{claim.customer}</td>
                           <td className={`px-4 py-2.5 font-medium ${isHigh ? 'text-red-700' : ''}`}>{claim.amount}</td>
-                          <td className="px-4 py-2.5 text-gray-500">{claim.date}</td>
+                          <td className="px-4 py-2.5 text-gray-500">{claim.regEDate}</td>
+                          <td className="px-4 py-2.5">{claim.claimSubtype || '\u2014'}</td>
                           <td className="px-4 py-2.5">
                             {isHigh ? (
                               <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-800">High</span>
@@ -925,7 +979,7 @@ function App() {
                 {visibleSubtypes.map((subtype) => (
                   <button
                     key={subtype}
-                    onClick={() => setSelectedSubtype(subtype)}
+                    onClick={() => { setSelectedSubtype(subtype); setSelectedClaimSubtype('') }}
                     className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
                       selectedSubtype === subtype
                         ? 'bg-blue-100 text-blue-700 border border-blue-300'
@@ -935,6 +989,23 @@ function App() {
                     {subtype}
                   </button>
                 ))}
+              </div>
+            )}
+
+            {/* Claim Subtype filter (ATM/Debit specific) */}
+            {availableClaimSubtypes.length > 0 && (
+              <div className="flex items-center gap-2">
+                <label className="text-xs font-medium text-gray-500">Sub Type Filter:</label>
+                <select
+                  value={selectedClaimSubtype}
+                  onChange={(e) => setSelectedClaimSubtype(e.target.value)}
+                  className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs text-gray-700 focus:border-blue-500 focus:outline-none"
+                >
+                  <option value="">All Sub Types</option>
+                  {availableClaimSubtypes.map((s) => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
               </div>
             )}
 
@@ -956,27 +1027,27 @@ function App() {
               <table className="w-full text-left text-sm">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-4 py-3 font-medium text-gray-600">Claim ID</th>
-                    <th className="px-4 py-3 font-medium text-gray-600">Type</th>
-                    <th className="px-4 py-3 font-medium text-gray-600">Customer</th>
-                    <th className="px-4 py-3 font-medium text-gray-600">Amount</th>
-                    <th className="px-4 py-3 font-medium text-gray-600">Status</th>
-                    <th className="px-4 py-3 font-medium text-gray-600">Date</th>
+                    <th className="px-4 py-3 font-medium text-gray-600">Claim Date</th>
+                    <th className="px-4 py-3 font-medium text-gray-600">Claim Status</th>
+                    <th className="px-4 py-3 font-medium text-gray-600">Claim Number</th>
+                    <th className="px-4 py-3 font-medium text-gray-600">Dollar Amount</th>
+                    <th className="px-4 py-3 font-medium text-gray-600">Reg E Date</th>
+                    <th className="px-4 py-3 font-medium text-gray-600">Sub Type</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {filteredClaims.map((claim) => (
                     <tr key={claim.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-4 py-3 font-mono text-blue-600">{claim.id}</td>
-                      <td className="px-4 py-3">{claim.claimType}</td>
-                      <td className="px-4 py-3">{claim.customer}</td>
-                      <td className="px-4 py-3 font-medium">{claim.amount}</td>
+                      <td className="px-4 py-3 text-gray-700">{claim.date}</td>
                       <td className="px-4 py-3">
                         <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${statusColors[claim.status]}`}>
                           {claim.status}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-gray-500">{claim.date}</td>
+                      <td className="px-4 py-3 font-mono text-blue-600">{claim.id}</td>
+                      <td className="px-4 py-3 font-medium">{claim.amount}</td>
+                      <td className="px-4 py-3 text-gray-500">{claim.regEDate}</td>
+                      <td className="px-4 py-3">{claim.claimSubtype || '\u2014'}</td>
                     </tr>
                   ))}
                   {filteredClaims.length === 0 && (
