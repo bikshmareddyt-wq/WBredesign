@@ -73,6 +73,7 @@ const atmDebitClaimSubtypes: Record<string, string[]> = {
 const statuses = ['Pending', 'Approved', 'Rejected', 'In Review', 'Escalated', 'Resolved']
 const statusColors: Record<string, string> = {
   Pending: 'bg-yellow-100 text-yellow-800',
+  'Pending Under Review': 'bg-orange-100 text-orange-800',
   Approved: 'bg-green-100 text-green-800',
   Rejected: 'bg-red-100 text-red-800',
   'In Review': 'bg-blue-100 text-blue-800',
@@ -119,6 +120,10 @@ function generateClaims(): Claim[] {
             const subs = atmDebitClaimSubtypes[subtype]
             claimSubtype = subs[Math.floor(Math.random() * subs.length)]
           }
+          // Set status to 'Pending Under Review' for Initial Review and Enhanced Review subtypes
+          const claimStatus = (subtype === 'Initial Review' || subtype === 'Enhanced Review')
+            ? 'Pending Under Review'
+            : statuses[Math.floor(Math.random() * statuses.length)]
           claims.push({
             id: `CLM-${String(claimId).padStart(4, '0')}`,
             claimType: type,
@@ -126,7 +131,7 @@ function generateClaims(): Claim[] {
             subtype,
             claimSubtype,
             customer: customerNames[Math.floor(Math.random() * customerNames.length)],
-            status: statuses[Math.floor(Math.random() * statuses.length)],
+            status: claimStatus,
             date: date.toISOString().split('T')[0],
             amount: `$${amount}`,
             regEDate: regEDateObj.toISOString().split('T')[0],
@@ -155,6 +160,9 @@ function generateClaims(): Claim[] {
           const subs = atmDebitClaimSubtypes[subtype]
           claimSubtype2 = subs[Math.floor(Math.random() * subs.length)]
         }
+        const claimStatus2 = (subtype === 'Initial Review' || subtype === 'Enhanced Review')
+          ? 'Pending Under Review'
+          : statuses[Math.floor(Math.random() * statuses.length)]
         claims.push({
           id: `CLM-${String(claimId).padStart(4, '0')}`,
           claimType: 'Debt/ATM',
@@ -162,7 +170,7 @@ function generateClaims(): Claim[] {
           subtype,
           claimSubtype: claimSubtype2,
           customer: customerNames[Math.floor(Math.random() * customerNames.length)],
-          status: statuses[Math.floor(Math.random() * statuses.length)],
+          status: claimStatus2,
           date: date.toISOString().split('T')[0],
           amount: `$${amount}`,
           regEDate: regEDateObj2.toISOString().split('T')[0],
