@@ -295,7 +295,6 @@ function App() {
     if (hasAllClaimType) {
       claimTypes.forEach((t) => allowedTypes.add(t))
     } else {
-      allowedTypes.add('All')
       userAssigns.forEach((a) => allowedTypes.add(a.claimType))
     }
     const allowedWorkbaskets = new Set<string>()
@@ -322,12 +321,19 @@ function App() {
   const handleUserChange = (userId: string) => {
     setSelectedUserId(userId)
     // Reset selections when user changes
-    setSelectedClaimType('All')
     if (!userId) {
+      setSelectedClaimType('All')
       setSelectedWorkbasket('Ready To Work')
       setSelectedSubtype('Initial Review')
     } else {
       const userAssigns = assignments.filter((a) => a.userId === userId)
+      const hasAllClaimType = userAssigns.some((a) => a.claimType === 'All')
+      if (hasAllClaimType) {
+        setSelectedClaimType('All')
+      } else {
+        const firstType = userAssigns.map((a) => a.claimType).find((t) => t !== 'All') || userAssigns[0]?.claimType || 'All'
+        setSelectedClaimType(firstType)
+      }
       const firstWb = workbaskets.find((w) => userAssigns.some((a) => a.workbasket === w)) || workbaskets[0]
       setSelectedWorkbasket(firstWb)
       const subs = workbasketSubtypes[firstWb]
